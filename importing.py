@@ -18,3 +18,37 @@ from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures, StandardScaler, LabelEncoder
 from sklearn.model_selection import train_test_split
 
+!git clone https://github.com/cardstdani/WasteClassificationNeuralNetwork.git
+DIR = "/content/WasteClassificationNeuralNetwork/WasteImagesDataset"
+train_dataset = tp.keras.preprocessing.image_dataset_from_directory(DIR, validation_split=0.1, subset="training", seed=42, batch_size=128, smart_resize=True, image_size=(256, 256))
+test_dataset = tp.keras.preprocessing.image_dataset_from_directory(DIR, validation_split=0.1, subset="validation", seed=42, batch_size=128, smart_resize=True, image_size=(256,256))
+
+classes = train_dataset.class_names
+numClasses = len(train_dataset.class_names)
+print(classes)
+# tf.data.AUTOTUNE is used to optimize the performance of both training and testing dataset objects
+AUTOTUNE= tp.data.AUTOTUNE
+
+train_dataset = train_dataset.prefetch(buffer_size=AUTOTUNE)
+test_dataset = test_dataset.prefetch(buffer_size=AUTOTUNE)
+
+# MobileNetV3Large is pretrained model without its original final dense layer
+baseModel = tp.keras.applications.MobileNetV3Large(input_shape=(256, 256,3), weights='imagenet', include_top=False, classes=numClasses)
+for layers in baseModel.layers[:-6]:
+  layers.trainable=False
+
+last_output = baseModel.layers[-1].output
+x = tp.keras.layers.Dropout(0.45) (last_output)
+x = tp.keras.layers.GlobalAveragePooling2D()(x)
+x = tp.keras.layers.BatchNormalization() (x) # Layer for fixing internal covariate shift and ELU activation function
+x = tp.keras.layers.Dense(256, activation = tp.keras.activations.elu, kernel_regularizer=tp.keras.regularizers.l1(0.045), activity_regularizer=tp.keras.regularizers.l1(0.045),  kernel_initializer='he_normal')(x)
+x = tp.keras.layers.Dropout(0.45) (x)
+x = tp.keras.layers.Dense(numClasses, activation='softmax')(x)
+
+model = tp.keras.Model(inputs=baseModel.input,outputs=x)
+model.compile(optimizer=tp.keras.optimizers.Adam(learning_rate=0.00125), loss=tp.keras.losses.SparseCategoricalCrossentropy(from_logits=True), metrics=['accuracy'])
+
+epochs = 50
+lrCallback = tp.keras.callbacks.LearningRateScheduler(lambda epoch: 1e-3 * 10 ** (epoch / 30))
+stepDecay = tp.keras.callbacks.LearningRateScheduler(lambda epoch: 0.1 * 0.1**math.floor(epoch / 6))
+history = model.fit(train_dataset, validation_data=test_dataset, epochs=epochs, callbacks=[])
