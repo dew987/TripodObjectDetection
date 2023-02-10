@@ -1,5 +1,5 @@
 # TripodObjectDetection
-Technex23-Hackathon Object Detection
+Technex23-Hackathon Garbage Image Classification
 
 # Contributors
 Aadarsh Jain
