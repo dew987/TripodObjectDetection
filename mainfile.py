@@ -52,3 +52,76 @@ epochs = 50
 lrCallback = tp.keras.callbacks.LearningRateScheduler(lambda epoch: 1e-3 * 10 ** (epoch / 30))
 stepDecay = tp.keras.callbacks.LearningRateScheduler(lambda epoch: 0.1 * 0.1**math.floor(epoch / 6))
 history = model.fit(train_dataset, validation_data=test_dataset, epochs=epochs, callbacks=[])
+
+model.save("/content/model.h5")
+model.summary()
+
+plt.plot(range(0, epochs), history.history["loss"], color="b", label="Loss")
+plt.plot(range(0, epochs), history.history["val_loss"], color="r", label="Test Loss")
+plt.legend()
+plt.show()
+
+plt.plot(range(0, epochs), history.history["accuracy"], color="b", label="Accuracy")
+plt.plot(range(0, epochs), history.history["val_accuracy"], color="r", label="Test Accuracy")
+plt.legend()
+plt.show()
+
+plt.xlim([0, 0.003])
+learning_rates = 1e-3 * (10 ** (np.arange(epochs) / 30))
+plt.plot(learning_rates, history.history['loss'], lw=3, color='#48e073')
+plt.title('Learning rate vs. loss', size=20)
+plt.xlabel('Learning rate', size=14)
+plt.ylabel('Loss', size=14)
+
+import requests
+
+img_data = requests.get("https://images.unsplash.com/photo-1591872203534-278fc084969e?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1064&q=80").content
+with open('img.jpg', 'wb') as handler:
+    handler.write(img_data)
+
+path = "/content/img.jpg"
+
+img = tp.keras.preprocessing.image.load_img(path, target_size=(256, 256))
+img_array = tp.keras.preprocessing.image.img_to_array(img)
+img_array = tp.expand_dims(img_array, 0) 
+
+predictions = model.predict(img_array)
+
+plt.imshow(img)
+print(predictions[0]*100, "\n", classes)
+print("Prediction: ", classes[np.argmax(predictions)], f"{predictions[0][np.argmax(predictions)]*100}%")
+
+def plot_confusion_matrix(cm, target_names, cmap=None):
+    import matplotlib.pyplot as plt
+    import numpy as np
+    import itertools
+
+    accuracy = np.trace(cm) / float(np.sum(cm))
+    misclass = 1 - accuracy
+
+    if cmap is None:
+        cmap = plt.get_cmap('Blues')
+
+    plt.figure(figsize=(8, 6))
+    plt.imshow(cm, interpolation='nearest', cmap=cmap)
+    plt.title('Confusion matrix')
+    plt.colorbar()
+
+    if target_names is not None:
+        tick_marks = np.arange(len(target_names))
+        plt.xticks(tick_marks, target_names, rotation=45)
+        plt.yticks(tick_marks, target_names)
+
+    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+            plt.text(j, i, "{:,}".format(cm[i, j]),
+                     horizontalalignment="center",
+                     color="black")
+
+    plt.tight_layout()
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label\naccuracy={:0.4f}%; misclass={:0.4f}%'.format(accuracy, misclass))
+    plt.show()
+
+plt.figure(figsize=(10, 10))
+true = []
+predictions = []
